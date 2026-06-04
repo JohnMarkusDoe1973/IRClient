@@ -316,18 +316,21 @@ static void loadPlugins(lua_State* L, WINDOW* logwin) {
     fs::path dir = pluginDir();
     std::error_code ec;
     fs::create_directories(dir, ec);
+    std::vector<fs::path> paths;
     for (const auto& entry : fs::directory_iterator(dir, ec)) {
         if (ec) break;
         if (!entry.is_regular_file()) continue;
         if (entry.path().extension() != ".lua") continue;
-        std::string path = entry.path().string();
-        if (luaL_dofile(L, path.c_str()) != LUA_OK) {
+        paths.push_back(entry.path());
+    }
+    std::sort(paths.begin(), paths.end());
+    for (const auto& path : paths) {
+        std::string pathStr = path.string();
+        if (luaL_dofile(L, pathStr.c_str()) != LUA_OK) {
             const char* err = lua_tostring(L, -1);
-            addLog(logwin, std::string("Lua plugin error in ") + path + ": " + (err ? err : "unknown"));
+            addLog(logwin, std::string("Lua plugin error in ") + pathStr + ": " + (err ? err : "unknown"));
             lua_pop(L, 1);
-        } else {
-            addLog(logwin, "Loaded plugin: " + path);
-        }
+        } else {addLog(logwin, "Loaded plugin: " + pathStr);}
     }
 }
 static void drawInput(WINDOW* inputwin, const std::string& input, const std::string& channel) {
@@ -514,6 +517,11 @@ static int luaPrivMsg(lua_State* L) {
     lua_pushboolean(L, ok);
     return 1;
 }
+static int luaNick(lua_State* L) {
+    std::string* nick = static_cast<std::string*>(lua_touserdata(L, lua_upvalueindex(1)));
+    lua_pushstring(L, nick->c_str());
+    return 1;
+}
 static int luaLog(lua_State* L) {
     WINDOW* logwin = static_cast<WINDOW*>(lua_touserdata(L, lua_upvalueindex(1)));
     const char* message = luaL_checkstring(L, 1);
@@ -533,7 +541,7 @@ static int luaLogStyled(lua_State* L) {
     addLogStyled(logwin, std::string("[lua] ") + message, colorPair, attrs);
     return 0;
 }
-static void registerLuaApi(lua_State* L, Connection& conn, WINDOW* logwin) {
+static void registerLuaApi(lua_State* L, Connection& conn, WINDOW* logwin, std::string& nick) {
     lua_newtable(L);
     struct LuaFn {const char* name;lua_CFunction fn;};
     LuaFn connFuncs[] = {{"send", luaSend},{"join", luaJoin},};
@@ -552,6 +560,9 @@ static void registerLuaApi(lua_State* L, Connection& conn, WINDOW* logwin) {
     lua_pushlightuserdata(L, logwin);
     lua_pushcclosure(L, luaLogStyled, 1);
     lua_setfield(L, -2, "logStyled");
+    lua_pushlightuserdata(L, &nick);
+    lua_pushcclosure(L, luaNick, 1);
+    lua_setfield(L, -2, "nick");
     lua_setglobal(L, "irc");
 }
 static void callLuaEvent(lua_State* L,    WINDOW* logwin,    const char* functionName,    const std::vector<std::string>& args) {
@@ -884,7 +895,7 @@ int main(int argc, char** argv) {
     bool running = true;
     bool registered = false;
     bool joinedInitialChannel = false;
-    registerLuaApi(L, conn, logwin);
+    registerLuaApi(L, conn, logwin, nick);
     loadPlugins(L, logwin);
     std::time_t lastStatusMinute = 0;
     while (running) {
@@ -1100,9 +1111,7 @@ int main(int argc, char** argv) {
                                 args.erase(0, 1);
                             }
                         }
-                        if (uppercase(command) != "JOIN" &&
-                            uppercase(command) != "QUIT" &&
-                            uppercase(command) != "CHANNEL") {
+                        if (uppercase(command) != "JOIN" &&uppercase(command) != "QUIT" &&uppercase(command) != "NICK" &&uppercase(command) != "CHANNEL") {
                             bool handled = callLuaCommand(L, logwin, command, args, channel);
                         if (handled) {
                             input.clear();
@@ -1111,16 +1120,26 @@ int main(int argc, char** argv) {
                         }
                             }
                             sendLine(conn, raw);
-                        std::string raw_upper = uppercase(raw);
-                        if (raw_upper.rfind("JOIN ", 0) == 0) {
-                            std::vector<std::string> words = splitWords(raw);
-                            if (words.size() >= 2) {
-                                channel = words[1];
-                                drawStatus(statuswin, server, nick, channel, use_tls);
-                                addLog(logwin, "Now sending messages to " + channel);
+                            std::string raw_upper = uppercase(raw);
+
+                            if (raw_upper.rfind("JOIN ", 0) == 0) {
+                                std::vector<std::string> words = splitWords(raw);
+                                if (words.size() >= 2) {
+                                    channel = words[1];
+                                    drawStatus(statuswin, server, nick, channel, use_tls);
+                                    addLog(logwin, "Now sending messages to " + channel);
+                                }
                             }
-                        }
-                        if (raw_upper.rfind("QUIT", 0) == 0) running = false;
+
+                            if (raw_upper.rfind("NICK ", 0) == 0) {
+                                std::vector<std::string> words = splitWords(raw);
+                                if (words.size() >= 2) {
+                                    nick = words[1];
+                                    drawStatus(statuswin, server, nick, channel, use_tls);
+                                }
+                            }
+
+                            if (raw_upper.rfind("QUIT", 0) == 0) running = false;
                     } else {
                         sendLine(conn, "PRIVMSG " + channel + " :" + input);
                         addMessageWithLuaStyle(L, logwin, nick, channel, input, "");
