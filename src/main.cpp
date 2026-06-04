@@ -168,6 +168,13 @@ static bool sendAll(Connection& conn, const char* data, size_t len) {
     }
     return true;
 }
+static std::string timestamp() {
+    std::time_t now = std::time(nullptr);
+    std::tm* tm = std::localtime(&now);
+    char buf[16];
+    std::strftime(buf, sizeof(buf), "%H:%M", tm);
+    return "[" + std::string(buf) + "] ";
+}
 static bool sendLine(Connection& conn, const std::string& line) {
     std::string msg = line + "\r\n";
     return sendAll(conn, msg.c_str(), msg.size());
@@ -278,7 +285,7 @@ static void addLogStyled(WINDOW* logwin,const std::string& line,short colorPair,
 }
 static void addLog(WINDOW* logwin, const std::string& line) {
     LogEntry entry;
-    entry.chunks.push_back({ line, 0, A_NORMAL });
+    entry.chunks.push_back({ timestamp() + line, 0, A_NORMAL });
     scrollback.push_back(entry);
     trimScrollback();
     redrawLog(logwin);
@@ -480,12 +487,27 @@ static std::string formatIRCLine(const std::string& line) {
         return "*** " + from + " changed topic for " + parts[1] + ": " + trailing;
     }
     if (cmd == "001") return "*** " + trailing;
-    if (cmd == "372" || cmd == "375" || cmd == "376") return "";
     if (cmd == "005") return "";
     if (cmd == "353") return "";
     if (cmd == "366") return "";
-    if (cmd == "353" && parts.size() >= 4) return "*** users in " + parts[3] + ": " + trailing;
-    if (cmd == "366" && parts.size() >= 3) return "*** end of users in " + parts[2];
+    if (cmd == "321") return "*** Channel list:";
+    if (cmd == "322" && parts.size() >= 4) return "[" + parts[2] + "] " + parts[3] + " users - " + trailing;
+    if (cmd == "375") return "*** Message of the day:";
+    if (cmd == "372") return "*** " + trailing;
+    if (cmd == "376") return "*** End of MOTD";
+    if (cmd == "332" && parts.size() >= 3)return "*** Topic for " + parts[2] + ": " + trailing;
+    if (cmd == "333" && parts.size() >= 4)return "*** Topic set by " + parts[3];
+    if (cmd == "311" && parts.size() >= 5)return "*** WHOIS " + parts[2] + ": " + parts[3] + "@" + parts[4] + " - " + trailing;
+    if (cmd == "312" && parts.size() >= 4)return "*** WHOIS server: " + parts[3] + " - " + trailing;
+    if (cmd == "317" && parts.size() >= 4)return "*** WHOIS idle: " + parts[3] + " seconds";
+    if (cmd == "318" && parts.size() >= 3)return "*** End of WHOIS for " + parts[2];
+    if (cmd == "401" && parts.size() >= 3)return "*** No such nick/channel: " + parts[2];
+    if (cmd == "403" && parts.size() >= 3)return "*** No such channel: " + parts[2];
+    if (cmd == "404" && parts.size() >= 3)return "*** Cannot send to channel " + parts[2] + ": " + trailing;
+    if (cmd == "433" && parts.size() >= 3)return "*** Nick already in use: " + parts[2];
+    if (cmd == "474" && parts.size() >= 3)return "*** Banned from " + parts[2] + ": " + trailing;
+    if (cmd == "475" && parts.size() >= 3)return "*** Bad channel key for " + parts[2];
+    if (cmd == "323") return "*** End of channel list";
     if (cmd == "002" || cmd == "003" || cmd == "004" || cmd == "250" || cmd == "251" || cmd == "252" || cmd == "253" || cmd == "254" || cmd == "255" || cmd == "265" || cmd == "266" || cmd == "396" || cmd == "900" || cmd == "353" || cmd == "366" || cmd == "MODE") return "";
     return line;
 }
@@ -874,6 +896,7 @@ int main(int argc, char** argv) {
     nodelay(inputwin, TRUE);
     keypad(inputwin, TRUE);
     scrollok(statuswin, FALSE);
+
     bool wantSasl = !auth.saslPassword.empty() || !auth.password.empty();
     if (wantSasl) {
         capNegotiating = true;
