@@ -826,6 +826,15 @@ static std::string ircEventType(const ParsedIRC& parsed) {
     if (command == "001") return "welcome";
     if (command == "353") return "names";
     if (command == "366") return "endnames";
+    if (command == "321") return "liststart";
+    if (command == "322") return "list";
+    if (command == "323") return "listend";
+    if (command == "332") return "topic";
+    if (command == "333") return "topicinfo";
+    if (command == "311" || command == "312" || command == "317") return "whois";
+    if (command == "318") return "whoisend";
+    if (command == "401" || command == "403" || command == "404" || command == "433" || command == "474" || command == "475") return "error";
+    if (command == "372" || command == "375" || command == "376") return "motd";
     return "raw";
 }
 int main(int argc, char** argv) {
