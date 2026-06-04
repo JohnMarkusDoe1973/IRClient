@@ -4,7 +4,7 @@
 ![Screenshot of IRClient](screenshots/001.jpg)
 
 ## What is it?
-IRClient is a compact IRC client written in c++.
+IRClient is a compact IRC client written in C++.
 
 ## Features
 IRClient supports the following features:
@@ -31,7 +31,7 @@ Debian-like systems:
 > sudo apt install g++ libncurses-dev libssl-dev liblua5.4-dev
 
 ## Building
-> g++ -std=c++17 main.cpp -o irc   $(pkg-config --cflags --libs lua ncurses openssl)
+> g++ -std=C++17 main.cpp -o irc   $(pkg-config --cflags --libs lua ncurses openssl)
 
 ## Running
 Without TLS you may run IRClient the following way:
@@ -50,9 +50,9 @@ An auth.conf file may look something like this:
   sasl_username=username
   sasl_password=yourPasswordHere
   ```
-
+***Remember to `chmod 600 ~/.config/IRClient/auth.conf`!***
 ## Plugins
-IRClient is so revolutionary and superior that it utilizes Lua plugins and not perl.
+IRClient is so revolutionary and superior that it utilizes Lua plugins and not Perl.
 Lua plugins live in *~/.config/IRClient/plugins*
 Available Lua functions include:
 * irc.send(line)
@@ -71,6 +71,9 @@ Supported attributes:
 > bold, underline, reverse, dim
 
 **An example plugin has been provided in plugins/**
+**For plugins to work, please include 00commands.lua**
+**If you are making your own Lua plugin, please don't start the name with 00.**
+**Additionally, please don't include a function named `onCommand` in your lua script.**
 
 ## Commands
 Inside IRClient:
