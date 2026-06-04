@@ -60,6 +60,7 @@ Available Lua functions include:
 * irc.privmsg(target, message)
 * irc.log(message)
 * irc.logStyled(message, color, attr1, attr2)
+* irc.nick()
 
 Example styled log:
 > irc.logStyled("plugin loaded", "magenta", "bold")
