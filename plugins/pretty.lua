@@ -1,6 +1,8 @@
 -- Please include 00commands.lua for script to work!!
 irc.logStyled("pretty.lua loaded","magenta","bold")
-local myNick="EnterYourNickname"
+local function myNick()
+    return irc.nick()
+end
 local nickColors={"cyan","green","yellow","magenta","white"}
 local function hashNick(nick)
 local h=0
@@ -28,8 +30,8 @@ for i=1,#nick do h=(h*31+string.byte(nick,i))%2147483647 end
             function styleLine(event,from,target,text,raw)
             from=from or ""
             text=text or ""
-            if event=="message" and from==myNick then return {color="white",bold=true} end
-                if event=="message" and contains(text,myNick) then return {color="yellow",bold=true} end
+            if event=="message" and from==myNick() then return {color="white",bold=true} end
+                if event=="message" and contains(text,myNick()) then return {color="yellow",bold=true} end
                     if event=="message" then return {color=nickColor(from)} end
                         if event=="notice" then return {color="yellow",dim=true} end
                             if event=="join" then return {color="green",bold=true} end
