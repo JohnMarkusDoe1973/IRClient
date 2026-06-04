@@ -40,18 +40,23 @@ for i=1,#nick do h=(h*31+string.byte(nick,i))%2147483647 end
                                         if event=="ctcp" then return {color="magenta",bold=true} end
                                             if event=="names" or event=="endnames" then return {color="cyan",dim=true} end
                                                 if event=="welcome" then return {color="green",bold=true} end
-                                                    return {color="white",dim=true}
-                                                    end
-                                                    registerCommandHandler(function(command,args,channel)
-                                                    command=string.lower(command or "")
-                                                    args=args or ""
-                                                    if command=="pretty" then
-                                                        irc.logStyled("Pretty style hook is active.","cyan","bold")
-                                                        return true
-                                                        end
-                                                        if command=="luaecho" then
-                                                            irc.privmsg(channel,args)
-                                                            return true
-                                                            end
-                                                            return false
-                                                            end)
+                                                    if event=="liststart" or event=="list" or event=="listend" then return {color="cyan",dim=true} end
+                                                        if event=="topic" or event=="topicinfo" then return {color="magenta",bold=true} end
+                                                            if event=="whois" or event=="whoisend" then return {color="cyan"} end
+                                                                if event=="error" then return {color="red",bold=true} end
+                                                                    if event=="motd" then return {color="white",dim=true} end
+                                                                        return {color="white",dim=true}
+                                                                        end
+                                                                        registerCommandHandler(function(command,args,channel)
+                                                                        command=string.lower(command or "")
+                                                                        args=args or ""
+                                                                        if command=="pretty" then
+                                                                            irc.logStyled("Pretty style hook is active.","cyan","bold")
+                                                                            return true
+                                                                            end
+                                                                            if command=="luaecho" then
+                                                                                irc.privmsg(channel,args)
+                                                                                return true
+                                                                                end
+                                                                                return false
+                                                                                end)
